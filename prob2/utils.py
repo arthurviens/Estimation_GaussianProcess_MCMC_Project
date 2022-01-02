@@ -5,8 +5,9 @@ import scipy.stats
 
 
 def kov(lbda, x, xprime):
-    return (1+((x-xprime)/lbda)+((x-xprime)*(x-xprime)/(3*lbda*lbda))) \
-        * np.exp(-(x-xprime)/lbda)
+    """return (1+((x-xprime)/lbda)+((x-xprime)*(x-xprime)/(3*lbda*lbda))) \
+        * np.exp(-(x-xprime)/lbda)"""
+    return np.exp(-((x-xprime)*(x - xprime))/lbda)
 
 
 def sigmaKov(X, lbda, func):
@@ -48,9 +49,24 @@ def simulGP_sin(X, N, lbda):
     plt.title(r"Réalisations de GP pour $\lambda$ = " + str(lbda))
     for i in range(5):
         g = np.random.normal(0, 1, size=N)
+        
         z = Lt @ g 
         #display(z.round(2))
         ax.plot(X, z, label = f"Sim {i}")
     plt.legend()
     plt.grid()
     plt.show()
+
+
+def draw_uniform_in_intervals(N):
+    X = np.linspace(0, 1, N)
+    numbers = np.zeros(N - 1)
+    for i in range(N - 1):
+        tup = X[i:i+2]
+        numbers[i] = np.random.uniform(low = tup[0], high = tup[1])
+    return numbers
+
+
+
+def neglikelihood(sigma, lbda, N):
+    z = np.sin(4 * np.pi * draw_uniform_in_intervals(N))
