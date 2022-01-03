@@ -5,9 +5,8 @@ import scipy.stats
 
 
 def kov(lbda, x, xprime):
-    """return (1+((x-xprime)/lbda)+((x-xprime)*(x-xprime)/(3*lbda*lbda))) \
-        * np.exp(-(x-xprime)/lbda)"""
-    return np.exp(-((x-xprime)*(x - xprime))/lbda)
+    return (1+(np.abs(x-xprime)/lbda)+(np.abs(x-xprime)**2 / (3*lbda*lbda))) \
+        * np.exp(-np.abs(x-xprime)/lbda)
 
 
 def sigmaKov(X, lbda, func):
