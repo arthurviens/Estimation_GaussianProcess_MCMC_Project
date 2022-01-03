@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import scipy.stats 
 from scipy.special import factorial
 #import math
+from sklearn.neighbors import KernelDensity
 
 
 
 class ParametrizedMCMC:
     """
-    class to define gamma(x) and posterior(x) functions of which the 
-    gamma law is parametrized accordingly
+    class to define priors, likelihood posteriors functions when x, alpha
+    and beta are fixed
     """
     def __init__(self, x, alpha, beta):
         assert isinstance(x, int), "x is not an integer"
@@ -43,7 +44,7 @@ def MCMC_sampling(distribution_parameters, N, s):
     posterior = distribution_parameters.getPosterior()
 
 
-    theta = 0
+    theta = 1
     p = posterior(theta)
 
     samples = []
@@ -68,3 +69,33 @@ def MCMC_sampling(distribution_parameters, N, s):
     print(f"Samples shape : {samples.shape}. Generated from {N} steps, \
         taking 1 sample out of {s}, and only the last half of the selected samples") 
     return samples
+
+
+def KDE_plot(samples, x_array, y_array):
+    density_param = {"density": True}
+
+    # ----------------------------------------------------------------------
+    # Plot a 1D density example
+    fig, ax = plt.subplots()
+    ax.fill(x_array, y_array, fc="black", alpha=0.2, label="real distribution")
+    colors = ["navy", "cornflowerblue", "darkorange"]
+    kernels = ["gaussian", "tophat", "epanechnikov"]
+    lw = 2
+
+    for color, kernel in zip(colors, kernels):
+        kde = KernelDensity(kernel=kernel, bandwidth=0.5).fit(samples.reshape(-1, 1))
+        log_dens = kde.score_samples(x_array.reshape(-1, 1))
+        ax.plot(
+            x_array,
+            np.exp(log_dens),
+            color=color,
+            lw=lw,
+            linestyle="-",
+            label="kernel = '{0}'".format(kernel),
+        )
+
+
+    ax.legend(loc="upper right")
+    #ax.plot(x_array, -0.005 - 0.01 * np.random.random(x_array.shape[0]), "+k")
+
+    plt.show()
