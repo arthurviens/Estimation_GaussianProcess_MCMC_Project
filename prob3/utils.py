@@ -36,6 +36,7 @@ class ParametrizedMCMC:
         return scipy.stats.gamma(self.alpha + self.x, loc=0, scale = 1 / (self.beta + 1)).pdf
 
 
+
 def MCMC_sampling(distribution_parameters, N, s):
     #----------------------------------------------------------------------------------------#
     # Metropolis Hastings sampling from the posterior distribution
@@ -96,6 +97,8 @@ def KDE_plot(samples, x_array, y_array):
 
 
     ax.legend(loc="upper right")
+    plt.xlabel("Domain of definition")
+    plt.ylabel("Density")
     #ax.plot(x_array, -0.005 - 0.01 * np.random.random(x_array.shape[0]), "+k")
 
     plt.show()
