@@ -3,27 +3,52 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats 
 
-
-def kov(lbda, x, xprime):
-    return (1+(np.abs(x-xprime)/lbda)+(np.abs(x-xprime)**2 / (3*lbda*lbda))) \
-        * np.exp(-np.abs(x-xprime)/lbda)
-
-
-def sigmaKov(X, lbda, func):
-    sh = X.shape[0]
-    sig = np.zeros((sh, sh))
-    for i in range(sh):
-        valxi = X[i]
-        for j in range(sh):
-            sig[i, j] = func(lbda, valxi, X[j])
+def kernel_ISE(X1, X2, l=1.0, sigma_f=1.0):
+    """
+    Isotropic squared exponential kernel.
     
-    sig = sig + np.diag(np.random.uniform(low = 0., high = 0.000001, size=sh))
+    Args:
+        X1: Array of m points (m x d).
+        X2: Array of n points (n x d).
+
+    Returns:
+        (m x n) matrix.
+    """
+    sqdist = np.sum(X1**2, 1).reshape(-1, 1) + np.sum(X2**2, 1) - 2 * np.dot(X1, X2.T)
+    return sigma_f**2 * np.exp(-0.5 / l**2 * sqdist)
+
+
+def kernel(X1, X2, lbda):
+    """
+    Project subject kernel.
+    
+    Args:
+        X1: Array of m points (m x d).
+        X2: Array of n points (n x d).
+
+    Returns:
+        (m x n) matrix.
+    """
+    a = np.abs(X1 - X2.reshape(-1, 1))
+    aa = np.square(a)
+    return (1 + (a / lbda) + (aa / (3*lbda*lbda))) * np.exp(-a/lbda)
+
+
+
+def sigmaKov(X1, X2, lbda, func=kernel, add_noise=True):
+    sh = X1.shape[0]
+    assert X1.shape[0] == X2.shape[0], "X1 and X2 are not of same size"
+    sig = func(X1, X2, lbda)
+    
+    if add_noise:
+        sig = sig + np.diag(np.random.uniform(low = 0., high = 0.000001, size=sh))
     assert sig.shape == (sh, sh), f"Covariance matrix has a wrong shape {sig.shape} instead of {(sh, sh)}" 
     return sig
 
 
+
 def simulGP_gauss(X, N, lbda):
-    sigma = sigmaKov(X, lbda, kov)
+    sigma = sigmaKov(X, X, lbda)
     L = np.linalg.cholesky(sigma)
     #Lt = L.T
     fig, ax = plt.subplots()
@@ -41,9 +66,9 @@ def simulGP_gauss(X, N, lbda):
 
 
 def simulGP_sin(X, N, lbda):
-    X_random = draw_uniform_in_intervals(N+1)
+    X_random = draw_uniform_in_intervals(N)
     Xsin = np.sin(4*np.pi*X_random)
-    sigma = sigmaKov(Xsin, lbda, kov)
+    sigma = sigmaKov(Xsin, Xsin, lbda)
     L = np.linalg.cholesky(sigma)
     #Lt = L.T
     fig, ax = plt.subplots()
@@ -63,16 +88,16 @@ def simulGP_sin(X, N, lbda):
 
 
 def draw_uniform_in_intervals(N):
-    X = np.linspace(0, 1, N)
-    numbers = np.zeros(N - 1)
-    for i in range(N - 1):
+    X = np.linspace(0, 1, N+1)
+    numbers = np.zeros(N)
+    for i in range(N):
         tup = X[i:i+2]
         numbers[i] = np.random.uniform(low = tup[0], high = tup[1])
     return numbers
 
 
 def neglikelihood(lbda, Z):
-    sigma = sigmaKov(Z, lbda, kov)
+    sigma = sigmaKov(Z, Z, lbda)
     L = np.linalg.cholesky(sigma)
     d = len(Z)
     Z = Z.reshape(1, d)
@@ -95,7 +120,7 @@ def logf(lambda_, x, z, n):
     # L_matrix = lu(covariance_matrix(x, lambda_))[1]
     # logdetS = slogdet(L_matrix.T)[1]
     # invS = L_matrix  # inv(L_matrix)
-    sigma = sigmaKov(x, lambda_, kov)
+    sigma = sigmaKov(x, x, lambda_)
     # L = lu(sigma)[1]
     logdetS = np.linalg.slogdet(sigma)[1]
     # logdetS = log(det(sigma))
