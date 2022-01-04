@@ -68,7 +68,7 @@ def simulGP_gauss(X, N, lbda):
 def simulGP_sin(X, N, lbda):
     X_random = draw_uniform_in_intervals(N)
     Xsin = np.sin(4*np.pi*X_random)
-    sigma = sigmaKov(Xsin, Xsin, lbda)
+    sigma = sigmaKov(X, X, lbda)
     L = np.linalg.cholesky(sigma)
     #Lt = L.T
     fig, ax = plt.subplots()
@@ -96,38 +96,17 @@ def draw_uniform_in_intervals(N):
     return numbers
 
 
-def neglikelihood(lbda, Z):
-    sigma = sigmaKov(Z, Z, lbda)
-    L = np.linalg.cholesky(sigma)
-    d = len(Z)
-    Z = Z.reshape(1, d)
+def neglikelihood(lbda, X, Z):
+    if lbda <= 0:
+        lbda = 1e-7
+    sigma = sigmaKov(X, X, lbda)
+    logdet = np.linalg.slogdet(sigma)[1]
+    invsig = np.linalg.inv(sigma)
+    
+    d = len(X)
+    Z = Z.reshape(d, 1)
     #print(f"Z : {Z}")
     Zt = Z.T
-    #print(f"Zt : {Zt}")
-    a = d * np.log(2 * np.pi)
-    #print(f"a = {a}")
-    detsig = np.linalg.det(L)
-    invsig = np.linalg.inv(L)
-    b = 0.5 * np.log(detsig)
-    #print(f"b = {b} : 0.5 * np.log(np.linalg.det(sigma)) with detsig = {detsig}")
-    c = (0.5 * Z @ invsig @ Zt).flatten()[0]
-    print(f"Pour lambda = {lbda}, Déterminant de sigma : {detsig} et resultat = {a+b+c}")
-    return a + b + c
-
-
-def logf(lambda_, x, z, n):
-    lambda_ = float(lambda_) + 0.01 if lambda_ == 0 else lambda_
-    # L_matrix = lu(covariance_matrix(x, lambda_))[1]
-    # logdetS = slogdet(L_matrix.T)[1]
-    # invS = L_matrix  # inv(L_matrix)
-    sigma = sigmaKov(x, x, lambda_)
-    # L = lu(sigma)[1]
-    logdetS = np.linalg.slogdet(sigma)[1]
-    # logdetS = log(det(sigma))
-    invS = np.linalg.inv(sigma)
-    # U = lu(sigma)[1]
-    # g = np.random.normal(size=x.shape[0])
-    # mean = U @ g
-    # mean = np.mean(x)
-    # print(logdetS)
-    return 0.5 * (n * np.log(2 * np.pi) + logdetS + z.T @ invS @ z)
+    #print(f"Shapes  zt {Zt.shape}, invsig {invsig.shape}, z {Z.shape},")
+    seghalf = Zt @ invsig @ Z
+    return 0.5 * (d * np.log(2 * np.pi) + logdet + seghalf)
