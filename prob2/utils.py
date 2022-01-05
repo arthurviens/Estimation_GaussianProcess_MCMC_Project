@@ -96,47 +96,68 @@ def draw_uniform_in_intervals(N):
     return numbers
 
 
-def neglikelihood(lbda, X, Z):
+def neglikelihood(lbda, Z):
     if lbda <= 0:
         lbda = 1e-7
-    sigma = sigmaKov(X, X, lbda)
+    sigma = sigmaKov(Z, Z, lbda)
     logdet = np.linalg.slogdet(sigma)[1]
     invsig = np.linalg.inv(sigma)
     
-    d = len(X)
+    d = len(Z)
     Z = Z.reshape(d, 1)
     #print(f"Z : {Z}")
     Zt = Z.T
     #print(f"Shapes  zt {Zt.shape}, invsig {invsig.shape}, z {Z.shape},")
     seghalf = Zt @ invsig @ Z
-    return 0.5 * (d * np.log(2 * np.pi) + logdet + seghalf)
+    return (0.5 * (d * np.log(2 * np.pi) + logdet + seghalf)).flatten()[0]
 
 
-def plot_gp(mu, cov, X, X_train=None, Y_train=None, samples=[]):
+def plot_GP(mu, cov, X, X_train=None, Y_train=None, samples=[]):
     X = X.ravel()
     mu = mu.ravel()
-    uncertainty = 1.96 * np.sqrt(np.diag(cov))
+    uncertainty = 2 * np.diag(cov)
     
-    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1)
-    plt.plot(X, mu, label='Mean')
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1, label = "$\pm 2 \sigma^2_n(x)$ ")
+    plt.plot(X, mu, label='$\mu_n(x)$')
+    plt.plot(X, np.sin(4*np.pi*X), label="$sin(4\pi x)$")
     for i, sample in enumerate(samples):
-        plt.plot(X, sample, lw=1, ls='--', label=f'Sample {i+1}')
+        plt.plot(X, sample, color="green", lw=1, ls='--')#, label=f'Sample {i+1}')
     if X_train is not None:
         plt.plot(X_train, Y_train, 'rx')
+        plt.title(f"Gaussian process approximation of a function with {len(X_train)} train points")
+    plt.xlabel("X")
+    plt.ylabel("Function value")
     plt.legend()
 
 
+def generate_GP_samples(mu, cov, size, num_samples):
+    """ Generate n gaussian process samples of size k according to mu and cov
+    Args:
+        mu: Mean vector
+        cov: Covariance vector
+        size: Size of samples
+        num_samples: Number of GP to sample
+    """
+    L = np.linalg.cholesky(cov)
+    samples = np.zeros((num_samples, size))
+    for i in range(num_samples):
+        g = np.random.normal(size=size)
+        samples[i, :] = mu + L @ g
+    return samples
 
-def parameters(X_s, X_train, Y_train, lbda, sigma_y=1e-8):
-    K = kernel(X_train, X_train, lbda) + sigma_y**2 * np.eye(len(X_train))
-    K_s = kernel(X_s, X_train, lbda)
-    K_ss = kernel(X_s, X_s, lbda) + 1e-8 * np.eye(len(X_s))
-    K_inv = np.linalg.inv(K)
+
+def parameters(X, X_train, Y_train, lbda):
+    """ Calculates posterior of X from X_train and Y_train
+    """
+    sigman = kernel(X_train, X_train, lbda) 
+    sigmanN = kernel(X, X_train, lbda)
+    sigmaN = kernel(X, X, lbda) + 1e-8 * np.eye(len(X))
+    K_inv = np.linalg.inv(sigman)
     
     # Equation (7)
-    mu_s = K_s.T.dot(K_inv).dot(Y_train)
+    mu_s = sigmanN.T.dot(K_inv).dot(Y_train)
 
     # Equation (8)
-    cov_s = K_ss - K_s.T.dot(K_inv).dot(K_s)
+    cov_s = sigmaN - sigmanN.T.dot(K_inv).dot(sigmanN)
     
     return mu_s, cov_s
