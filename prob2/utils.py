@@ -36,13 +36,13 @@ def kernel(X1, X2, lbda):
 
 
 def sigmaKov(X1, X2, lbda, func=kernel, add_noise=True):
-    sh = X1.shape[0]
-    assert X1.shape[0] == X2.shape[0], "X1 and X2 are not of same size"
+    sh = max((X1.shape[0], X2.shape[0]))
+    #assert X1.shape[0] == X2.shape[0], "X1 and X2 are not of same size"
     sig = func(X1, X2, lbda)
     
     if add_noise:
-        sig = sig + np.diag(np.random.uniform(low = 0., high = 0.000001, size=sh))
-    assert sig.shape == (sh, sh), f"Covariance matrix has a wrong shape {sig.shape} instead of {(sh, sh)}" 
+        sig = sig + np.diag(np.random.uniform(low = 0., high = 1e-7, size=sh))
+    #assert sig.shape == (sh, sh), f"Covariance matrix has a wrong shape {sig.shape} instead of {(sh, sh)}" 
     return sig
 
 
@@ -110,3 +110,33 @@ def neglikelihood(lbda, X, Z):
     #print(f"Shapes  zt {Zt.shape}, invsig {invsig.shape}, z {Z.shape},")
     seghalf = Zt @ invsig @ Z
     return 0.5 * (d * np.log(2 * np.pi) + logdet + seghalf)
+
+
+def plot_gp(mu, cov, X, X_train=None, Y_train=None, samples=[]):
+    X = X.ravel()
+    mu = mu.ravel()
+    uncertainty = 1.96 * np.sqrt(np.diag(cov))
+    
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1)
+    plt.plot(X, mu, label='Mean')
+    for i, sample in enumerate(samples):
+        plt.plot(X, sample, lw=1, ls='--', label=f'Sample {i+1}')
+    if X_train is not None:
+        plt.plot(X_train, Y_train, 'rx')
+    plt.legend()
+
+
+
+def parameters(X_s, X_train, Y_train, lbda, sigma_y=1e-8):
+    K = kernel(X_train, X_train, lbda) + sigma_y**2 * np.eye(len(X_train))
+    K_s = kernel(X_s, X_train, lbda)
+    K_ss = kernel(X_s, X_s, lbda) + 1e-8 * np.eye(len(X_s))
+    K_inv = np.linalg.inv(K)
+    
+    # Equation (7)
+    mu_s = K_s.T.dot(K_inv).dot(Y_train)
+
+    # Equation (8)
+    cov_s = K_ss - K_s.T.dot(K_inv).dot(K_s)
+    
+    return mu_s, cov_s
