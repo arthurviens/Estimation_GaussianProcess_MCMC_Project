@@ -22,10 +22,54 @@ def estimators_moment(X):
     return m, alpha
 
 
+def f(alpha, Xi):
+    m = np.mean(Xi)
+    num = np.sum(Xi * np.exp(-Xi/alpha))
+    den = np.sum(np.exp(-Xi/alpha))
+    return alpha - m + num/den
+
+def f_prime(alpha, Xi):
+    term1 = np.sum(np.exp(-Xi/alpha)) 
+    term2 = np.sum(np.square(Xi/alpha) * np.exp(-Xi/alpha))
+    term3 = np.sum(Xi * np.exp(-Xi/alpha))
+    term4 = np.sum(Xi/alpha**2 * np.exp(-Xi/alpha))
+    term5 = np.square(np.sum(np.exp(-Xi/alpha)))
+    return 1 + (term1 * term2 - term3 * term4) / term5 
+
+def newton(f,Df,x0, X, epsilon,max_iter):
+    '''Approximate solution of f(x)=0 by Newton's method.
+
+    Parameters
+    ----------
+    f : function
+        Function for which we are searching for a solution f(x)=0.
+    Df : function
+        Derivative of f(x).
+    x0 : number
+        Initial guess for a solution f(x)=0.
+    epsilon : number
+        Stopping criteria is abs(f(x)) < epsilon.
+    max_iter : integer
+        Maximum number of iterations of Newton's method.
+    '''
+    xn = x0
+    for n in range(0,max_iter):
+        fxn = f(xn, X)
+        if abs(fxn) < epsilon:
+            #print('Found solution after',n,'iterations.')
+            return xn
+        Dfxn = Df(xn, X)
+        if Dfxn == 0:
+            print('Zero derivative. No solution found.')
+            return None
+        xn = xn - fxn/Dfxn
+    print('Exceeded maximum iterations. No solution found.')
+    return None
+
+
+
 def alpha_estimator_likelihood(X):
-    num = np.sum(X * np.exp(-X))
-    den = np.sum(np.exp(-X))
-    return X.mean() - num/den
+    return newton(f, f_prime, 2, X, 1e-7, 100)
 
 
 def m_estimator_likelihood(X):
