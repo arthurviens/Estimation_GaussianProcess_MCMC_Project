@@ -115,9 +115,9 @@ def neglikelihood(lbda, Z):
 def plot_GP(mu, cov, X, X_train=None, Y_train=None, samples=[]):
     X = X.ravel()
     mu = mu.ravel()
-    uncertainty = 2 * np.diag(cov)
+    uncertainty = 2 * np.sqrt(np.diag(cov))
     
-    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1, label = "$\pm 2 \sigma^2_n(x)$ ")
+    plt.fill_between(X, mu + uncertainty, mu - uncertainty, alpha=0.1, label = "$\pm 2 \sigma_n(x)$ ")
     plt.plot(X, mu, label='$\mu_n(x)$')
     plt.plot(X, np.sin(4*np.pi*X), label="$sin(4\pi x)$")
     for i, sample in enumerate(samples):
